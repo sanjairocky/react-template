@@ -6,7 +6,7 @@ const App = () => {
   const [data] = useApp();
   console.info(data);
   return (
-    <div className="d-flex h-100 align-items-center justify-content-center">
+    <div className="flex h-full align-items-center justify-content-center">
       happy hacking!
     </div>
   );
