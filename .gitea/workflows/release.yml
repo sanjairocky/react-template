@@ -12,14 +12,17 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - run: npm ci
+    - run: npm run build --if-present
+    - run: npm test --if-present
+
     - name: Configure minio/mc
       run: "docker run --rm \\\n-v $(pwd):/data \\\n minio/mc -C /data alias set --insecure myminio https://minio.sanjairocky.in \\\n ${{ secrets.AWS_ACCESS_KEY_ID }} ${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+
     - name: upload static files
       run: |
         docker run --rm \
         -v "$(pwd)":/data \
         minio/mc -C /data mirror --overwrite \
-        --insecure --remove /data/public/ \
+        --insecure --remove /data/dist/ \
         myminio/${{ github.event.repository.name }}.site
-
-
