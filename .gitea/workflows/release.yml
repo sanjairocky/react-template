@@ -8,7 +8,12 @@ on:
 jobs:
   deploy:
     name: Build & deploy S3
+    container: node:lts-bookworm
     runs-on: ubuntu-latest
+    env:
+      NODE_TLS_REJECT_UNAUTHORIZED: 0
+      GIT_SSL_NO_VERIFY: true
+      RUNNER_TOOL_CACHE: /toolcache
     steps:
     - name: Checkout
       uses: actions/checkout@v4
