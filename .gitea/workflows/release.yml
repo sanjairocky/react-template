@@ -7,17 +7,55 @@ on:
 
 jobs:
   deploy:
+    name: Build & deploy S3
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - run: npm ci
+    - run: yarn
+      name: install dependencies
+
     - run: npm run build --if-present
+      name: react build
+
     - run: npm test --if-present
+      name: react test
 
     - name: Configure minio/mc
-      run: "docker run --rm \\\n-v $(pwd):/data \\\n minio/mc -C /data alias set --insecure myminio https://minio.sanjairocky.in \\\n ${{ secrets.AWS_ACCESS_KEY_ID }} ${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+      run: "docker run --rm -v $(pwd):/data minio/mc -C /data alias set --insecure myminio https://minio.sanjairocky.in ${{ secrets.AWS_ACCESS_KEY_ID }} ${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+
+    - name: Check if bucket exists
+      id: bucket-check
+      run: |
+        if docker run --rm -v $(pwd):/data minio/mc -C /data --insecure ls  myminio/${{ github.event.repository.name }}.site; then
+          echo "Bucket already exists."
+          echo "exists=true" >> $GITHUB_ENV
+        else
+          echo "Bucket does not exist."
+          echo "exists=false" >> $GITHUB_ENV
+        fi
+    - name: Create MinIO bucket
+      if: env.exists == 'false'
+      run: "docker run --rm -v $(pwd):/data  minio/mc -C /data --insecure mb  myminio/${{ github.event.repository.name }}.site"
+
+    - name: create or update bucket policy
+      run: |
+        echo '{
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": "s3:GetObject",
+                    "Resource": "arn:aws:s3:::${{ github.event.repository.name }}.site/*"
+                }
+            ]
+        }' > bucket-policy.json
+
+    - name: Set bucket policy
+      run: "docker run --rm -v $(pwd):/data  minio/mc -C /data --insecure anonymous set-json /data/bucket-policy.json myminio/${{ github.event.repository.name }}.site"
+
 
     - name: upload static files
       run: |
